@@ -1,5 +1,5 @@
 import dotenv
-from client import router as clientRouter
+from db.test import router as testRouter
 import uvicorn as uv
 
 from fastapi import FastAPI, Form
@@ -7,7 +7,7 @@ from fastapi import FastAPI, Form
 dotenv.load_dotenv()
 
 app = FastAPI()
-app.include_router(clientRouter)
+app.include_router(testRouter)
 
 @app.get("/")
 def hello_world():
