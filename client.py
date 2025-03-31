@@ -14,7 +14,7 @@ async def get_db_session():
         async with await mysql.connector.aio.connect(
             user=os.environ['USER'],
             password=os.environ['PASSWORD'],
-            database="test_generation_model"
+            database=os.environ['DATABASE']
         ) as conn:
             yield conn
 
