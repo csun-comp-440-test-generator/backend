@@ -22,7 +22,7 @@ dotenv.load_dotenv()
 
 router = APIRouter(prefix="/test")
 
-@router.post("/create", status_code=status.HTTP_201_CREATED)
+@router.post("/create", status_code=status.HTTP_201_CREATED, tags=["exam"])
 async def create_test(section_id:int):
     async for conn in get_db_session():
         async with await conn.cursor() as cur:
@@ -37,7 +37,7 @@ async def create_test(section_id:int):
         await conn.commit()
         return test
         
-@router.get("/retrieve_by_section_id", status_code=status.HTTP_200_OK)
+@router.get("/retrieve_by_section_id", status_code=status.HTTP_200_OK, tags=["exam"])
 async def get_tests_by_section_id(section_id: int):
     async for conn in get_db_session():
         async with await conn.cursor() as cur:
@@ -59,7 +59,7 @@ async def get_tests_by_section_id(section_id: int):
                 tests.append(test)
             return tests
         
-@router.get("/retrieve_by_test_id", status_code=status.HTTP_200_OK)
+@router.get("/retrieve_by_test_id", status_code=status.HTTP_200_OK, tags=["exam"])
 async def get_tests_by_section_id(test_id: int):
     async for conn in get_db_session():
         async with await conn.cursor() as cur:
