@@ -16,8 +16,8 @@ dotenv.load_dotenv()
 
 router = APIRouter(prefix="/test/answer")
 
-@router.post("/create", status_code=status.HTTP_201_CREATED,tags=["exam","answers"])
-async def create_answer(test_id:int, question_id:int,answer_text:str,correct:bool, tags=["exam","answers"]):
+@router.post("/create", status_code=status.HTTP_201_CREATED,tags=["answers"])
+async def create_answer(test_id:int, question_id:int,answer_text:str,correct:bool):
     async for conn in get_db_session():
         async with await conn.cursor() as cur:
             #Create Query
@@ -33,7 +33,7 @@ async def create_answer(test_id:int, question_id:int,answer_text:str,correct:boo
         await conn.commit()
         return answer
         
-@router.get("/retrieve_answers_by_question", status_code=status.HTTP_200_OK, tags=["exam","answers"])
+@router.get("/retrieve_answers_by_question", status_code=status.HTTP_200_OK, tags=["answers"])
 async def get_answers_by_test_id_question_id(test_id:int,question_id: int):
     async for conn in get_db_session():
         async with await conn.cursor() as cur:
@@ -56,7 +56,7 @@ async def get_answers_by_test_id_question_id(test_id:int,question_id: int):
                 answers.append(answer)
             return answers
         
-@router.get("/retrieve_by_answer_id", status_code=status.HTTP_200_OK, tags=["exam","answers"])
+@router.get("/retrieve_by_answer_id", status_code=status.HTTP_200_OK, tags=["answers"])
 async def get_answer_by_answer_id(question_id: int, answer_id:int):
     async for conn in get_db_session():
         async with await conn.cursor() as cur:
@@ -76,7 +76,7 @@ async def get_answer_by_answer_id(question_id: int, answer_id:int):
                         )
             return answer
         
-@router.post("/edit_answer", status_code=status.HTTP_202_ACCEPTED, tags=["exam","answers"])
+@router.post("/edit_answer", status_code=status.HTTP_202_ACCEPTED, tags=["answers"])
 async def edit_answer(test_id: int, question_id:int, answer_id:int, answer_text:str,correct:bool):
     async for conn in get_db_session():
         async with await conn.cursor() as cur:
@@ -93,7 +93,7 @@ async def edit_answer(test_id: int, question_id:int, answer_id:int, answer_text:
             await conn.commit()
             return answer
 
-@router.post("/delete_answer_by_id", status_code=status.HTTP_200_OK, tags=["exam","answers"])
+@router.post("/delete_answer_by_id", status_code=status.HTTP_200_OK, tags=["answers"])
 async def delete_answer_by_id(test_id:int,question_id:int,answer_id:int):
         async for conn in get_db_session():
             async with await conn.cursor() as cur:
@@ -102,7 +102,7 @@ async def delete_answer_by_id(test_id:int,question_id:int,answer_id:int):
             await conn.commit()
             return True
         
-@router.post("/delete_answer_by_question", status_code=status.HTTP_200_OK, tags=["exam","answers"])
+@router.post("/delete_answer_by_question", status_code=status.HTTP_200_OK, tags=["answers"])
 async def delete_answer_by_question_id(test_id:int,question_id:int):
         async for conn in get_db_session():
             async with await conn.cursor() as cur:
