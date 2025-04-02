@@ -1,6 +1,8 @@
 import dotenv
 from db.test import router as testRouter
 from db.question import router as questionRouter
+from db.answer import router as answerRouter
+
 import uvicorn as uv
 
 from fastapi import FastAPI, Form
@@ -15,10 +17,10 @@ tags_metadata = [
     {
         "name": "questions",
         "description": "Operations used for created and editing questions.",
-        "externalDocs": {
-            "description": "Items external docs",
-            "url": "https://fastapi.tiangolo.com/",
-        },
+    },
+    {
+        "name": "answers",
+        "description": "Operations used for created and editing answers.",
     },
 ]
 
@@ -26,6 +28,7 @@ app = FastAPI(openapi_tags=tags_metadata)
 
 app.include_router(testRouter)
 app.include_router(questionRouter)
+app.include_router(answerRouter)
 
 @app.get("/")
 def hello_world():
