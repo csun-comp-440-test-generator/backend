@@ -1,4 +1,6 @@
 import sys
+
+from pydantic import BaseModel
 # sys hacks to get imports to work
 sys.path.append("./")
 
@@ -71,7 +73,7 @@ async def edit_course(course_id:int, new_course_id:int=None,new_course_name:str=
     else:
         return True
 
-@router.post("/delete", status_code=status.HTTP_200_OK, tags=["course"])
+@router.delete("/delete", status_code=status.HTTP_200_OK, tags=["course"])
 async def delete_course(course_id:int):
     try:
         async for conn in get_db_session():
@@ -87,7 +89,7 @@ async def delete_course(course_id:int):
     else:
         return True
     
-@router.post("/get_course_by_id", status_code=status.HTTP_200_OK, tags=["course"])
+@router.get("/get_course_by_id", status_code=status.HTTP_200_OK, tags=["course"])
 async def get_course_by_id(course_id:int):
     try:
         async for conn in get_db_session():
@@ -106,3 +108,26 @@ async def get_course_by_id(course_id:int):
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,detail=f"Error: {err}")
     else:
         return course
+    
+@router.get("/get_courses", status_code=status.HTTP_200_OK, tags=["course"])
+async def get_all_courses():
+    try:
+        async for conn in get_db_session():
+            async with await conn.cursor() as cur:
+                #Create Query
+                sel_query = "SELECT * FROM class"
+                #Select From DB
+                await cur.execute(sel_query,)
+                results = await cur.fetchall()
+                courses = []
+                for res in results:
+                    course_info = res
+                    course = Course(
+                                id = course_info[0],
+                                name = course_info[1])
+                    courses.append(course)
+    except Error as err:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,detail=f"Error: {err}")
+    else:
+        return courses
+

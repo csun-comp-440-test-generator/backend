@@ -7,11 +7,15 @@ from db.teacher import router as teacherRouter
 from db.student import router as studentRouter
 from db.section import router as sectionRouter
 
+
+
 import uvicorn as uv
 
 from fastapi import FastAPI, Form
+from fastapi.middleware.cors import CORSMiddleware
 
 dotenv.load_dotenv()
+
 
 tags_metadata = [
     {
@@ -29,6 +33,15 @@ tags_metadata = [
 ]
 
 app = FastAPI(openapi_tags=tags_metadata)
+
+# Allow all origins (you can be more specific with a list of domains if needed)
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # Allows all origins, you can specify domains like ['http://localhost:3000']
+    allow_credentials=True,
+    allow_methods=["*"],  # Allows all methods (GET, POST, etc.)
+    allow_headers=["*"],  # Allows all headers
+)
 
 app.include_router(testRouter)
 app.include_router(questionRouter)
