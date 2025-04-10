@@ -10,49 +10,49 @@ import random
 from db.client import get_db_session
 from db.models import Section
 from db.models import Student
+from pydantic import BaseModel
+from typing import Optional
 
 from fastapi import APIRouter, status, HTTPException
 from mysql.connector import Error
 
 dotenv.load_dotenv()
 
+class CreateSectionReqeust(BaseModel):
+    course_id: int
+    teacher_id: int
+    assistant_id: Optional[int] = None
+
 router = APIRouter(prefix="/section")
 
 @router.post("/create", status_code=status.HTTP_201_CREATED, tags=["section"])
-async def create_section(section_id:int, course_id:int, teacher_id:int, assistant_id:int=None):
+async def create_section(section_data: CreateSectionReqeust):
     try:
         async for conn in get_db_session():
             async with await conn.cursor() as cur:
-                if assistant_id is not None:
-                    #Create Pydantic Model
-                    section = Section(id=section_id,course=course_id,teacher=teacher_id,assistant=assistant_id)
+                if section_data.assistant_id is not None:
                     #Create Query
-
-                    insert_query = "INSERT INTO section (id,class_id,teacher,teaching_assistant) VALUES (%s,%s,%s,%s)"
+                    insert_query = "INSERT INTO section (class_id,teacher,teaching_assistant) VALUES (%s,%s,%s)"
                     #Insert into DB
                     await cur.execute(insert_query,
-                                    (section.id,
-                                    section.course,
-                                    section.teacher,
-                                    section.assistant,
+                                    (
+                                    section_data.course_id,
+                                    section_data.teacher_id,
+                                    section_data.assistant_id,
                                     ))
                 else:
-                    #Create Pydantic Model
-                    section = Section(id=section_id,course=course_id,teacher=teacher_id)
-                    #Create Query
-
-                    insert_query = "INSERT INTO section (id,class_id,teacher) VALUES (%s,%s,%s)"
+                    insert_query = "INSERT INTO section (class_id,teacher) VALUES (%s,%s)"
                     #Insert into DB
                     await cur.execute(insert_query,
-                                    (section.id,
-                                    section.course,
-                                    section.teacher,
+                                    (
+                                    section_data.course_id,
+                                    section_data.teacher_id,
                                     ))                     
                 await conn.commit()
     except Error as err:
             raise HTTPException(status_code=status.HTTP_406_NOT_ACCEPTABLE,detail=f"Error: {err}")
     else:
-        return section
+        return section_data
 
 @router.post("/edit", status_code=status.HTTP_202_ACCEPTED, tags=["section"])
 async def edit_section(section_id:int,new_section_teacher:int=None,new_section_assistant:int=None):

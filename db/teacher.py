@@ -9,11 +9,20 @@ import random
 
 from db.client import get_db_session
 from db.models import Teacher
+from pydantic import BaseModel
+from typing import Optional
 
 from fastapi import APIRouter, status, HTTPException
 from mysql.connector import Error
 
 dotenv.load_dotenv()
+
+class SectionInfoRequest(BaseModel):
+    course_id:  int
+    section_id :int
+    course_name: str
+    assistant_id: Optional[int] = None
+     
 
 router = APIRouter(prefix="/teacher")
 
@@ -107,3 +116,37 @@ async def get_teacher_by_id(teacher_id:int):
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,detail=f"Error: {err}")
     else:
         return teacher
+    
+@router.get("/get_teacher_sections", status_code=status.HTTP_200_OK, tags=["section", "teacher"])
+async def get_section_by_teacher_id(section_id:int):
+    try:
+        async for conn in get_db_session():
+            async with await conn.cursor() as cur:
+                #Create Query
+                sel_query = """
+                SELECT
+                    s.class_id as class_id,
+                    s.id as section_id,
+                    c.name as class_name
+                FROM section s
+                JOIN class c on c.id = s.class_id
+                JOIN teacher t on t.id = s.teacher
+                WHERE t.id = %s
+                ORDER BY s.id;"""
+                #Select From DB
+                await cur.execute(sel_query,
+                                (section_id,))
+                results = await cur.fetchall()
+                sections = []
+                for result in results:
+                    section_info = result
+                    section = SectionInfoRequest(
+                        course_id=section_info[0],
+                        section_id=section_info[1],
+                        course_name=section_info[2],
+                    )
+                    sections.append(section)
+    except Error as err:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,detail=f"Error: {err}")
+    else:
+        return sections
