@@ -11,15 +11,59 @@ from db.client import get_db_session
 from db.models import Test
 from db.models import Question
 from db.models import Answer
+from db.models import ExamBank
 
 from fastapi import APIRouter, status, HTTPException
 from mysql.connector import Error
 
 dotenv.load_dotenv()
 
-router = APIRouter(prefix="/test")
+router = APIRouter(prefix="/test", tags=["exam"])
 
-@router.post("/create_blank", status_code=status.HTTP_201_CREATED, tags=["exam"])
+@router.post("/create_test", status_code=status.HTTP_201_CREATED, tags=["exam"])
+async def create_test(exam:ExamBank):
+    try:
+        async for conn in get_db_session():
+            async with await conn.cursor() as cur:
+                #Create Pydantic Model
+                #Insert Test Info
+                exam_info = Test(section_id=exam.section_id,name=exam.exam_name)
+                #Create Query
+                insert_query = "INSERT INTO test (section_id,name) VALUES (%s,%s)"
+                #Insert into DB
+                await cur.execute(insert_query,
+                                (exam_info.section_id,
+                                exam_info.name,))
+                test_id = cur.lastrowid
+                total_questions = 0
+
+                for question in exam.questions:
+                    total_questions += 1
+                    newQuestion = Question(id=total_questions,test_id=test_id,question_text=question.question_text)
+                    insert_query = "INSERT INTO question (id,test_id,question_text) VALUES (%s,%s,%s)"
+                    #Insert into DB
+                    await cur.execute(insert_query,
+                                    (newQuestion.id,
+                                    newQuestion.test_id,
+                                    newQuestion.question_text,
+                                    ))
+
+                    for answer in question.answers:
+                        newAnswer = Answer(test_id=test_id,question_id=total_questions,answer_text=answer.answer_text,is_correct=answer.is_correct)
+                        insert_query = "INSERT INTO answer (test_id,question_id,answer_text,is_correct) VALUES (%s,%s,%s,%s);"
+                        await cur.execute(insert_query,
+                                        (newAnswer.test_id,
+                                        newAnswer.question_id,
+                                        newAnswer.answer_text,
+                                        int(newAnswer.is_correct),
+                                        ))
+            await conn.commit()
+    except Error as err:
+            raise HTTPException(status_code=status.HTTP_406_NOT_ACCEPTABLE,detail=f"Error: {err}")
+    else:
+        return exam
+
+@router.post("/create_blank", status_code=status.HTTP_201_CREATED)
 async def create_blank_test(section_id:int, test_name:str):
     try:
         async for conn in get_db_session():
@@ -38,7 +82,7 @@ async def create_blank_test(section_id:int, test_name:str):
     else:
         return test
     
-@router.get("/generate_test_questions_from_bank", status_code=status.HTTP_200_OK, tags=["exam"])
+@router.get("/generate_test_questions_from_bank", status_code=status.HTTP_200_OK)
 async def generate_test_questions_from_bank(section_id:int, test_id:int, number_of_questions:int):
     try:
         async for conn in get_db_session():
@@ -103,7 +147,7 @@ async def generate_test_questions_from_bank(section_id:int, test_id:int, number_
     else:
                 return test_model
         
-@router.get("/retrieve_by_section_id", status_code=status.HTTP_200_OK, tags=["exam"])
+@router.get("/retrieve_by_section_id", status_code=status.HTTP_200_OK)
 async def get_tests_by_section_id(section_id: int):
     try:
         async for conn in get_db_session():
@@ -130,7 +174,7 @@ async def get_tests_by_section_id(section_id: int):
     else:
         return tests
         
-@router.get("/retrieve_by_test_id", status_code=status.HTTP_200_OK, tags=["exam"])
+@router.get("/retrieve_by_test_id", status_code=status.HTTP_200_OK)
 async def get_tests_by_test_id(test_id: int, section_id:int):
     try:
         async for conn in get_db_session():
