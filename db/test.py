@@ -1,4 +1,8 @@
+from decimal import Decimal
 import sys
+from typing import Annotated
+
+from pydantic import Field
 # sys hacks to get imports to work
 sys.path.append("./")
 
@@ -8,7 +12,7 @@ import datetime
 import random
 
 from db.client import get_db_session
-from db.models import Test
+from db.models import RecieveSubmission, Test, TestSubmission
 from db.models import Question
 from db.models import Answer
 from db.models import ExamBank
@@ -173,6 +177,28 @@ async def get_tests_by_section_id(section_id: int):
         raise HTTPException(status_code=status.HTTP_406_NOT_ACCEPTABLE,detail=f"Error: {err}")
     else:
         return tests
+    
+@router.get("/retrieve_question_count", status_code=status.HTTP_200_OK)
+async def get_question_count_by_test_id(test_id:int):
+    try:
+        async for conn in get_db_session():
+            async with await conn.cursor() as cur:
+                select_query = """
+                SELECT COUNT(*) AS question_count
+                FROM question
+                WHERE test_id = %s;"""
+                await cur.execute(
+                    select_query,
+                    (test_id,)
+                    )
+                results = await cur.fetchone()
+                count = results[0]
+    except Error as err:
+        raise HTTPException(status_code=status.HTTP_406_NOT_ACCEPTABLE,detail=f"Error: {err}")
+    else:
+        return count
+    
+
         
 @router.get("/retrieve_by_test_id", status_code=status.HTTP_200_OK)
 async def get_tests_by_test_id(test_id: int, section_id:int):
@@ -222,3 +248,58 @@ async def get_tests_by_test_id(test_id: int, section_id:int):
             raise HTTPException(status_code=status.HTTP_406_NOT_ACCEPTABLE,detail=f"Error: {err}")
     else:
             return test_model
+    
+@router.post("/sumbit_exam", status_code=status.HTTP_200_OK)
+async def create_test_submission(submission:RecieveSubmission ):
+    try:
+        async for conn in get_db_session():
+            async with await conn.cursor() as cur:
+                submission_time = datetime.datetime.now()
+                #Create Pydantic Model
+                testSubmission = TestSubmission(
+                    student_id=submission.student_id,
+                    test_id=submission.test_id,
+                    attempt=submission.attempt,
+                    score=submission.score,
+                    submission_time=submission_time,)
+                #Create Query
+                insert_query = """
+                INSERT INTO test_submission 
+                (student_id,test_id,attempt,submission_time,score) 
+                VALUES (%s,%s,%s,%s,%s)"""
+                #Insert into DB
+                await cur.execute(insert_query,(
+                            testSubmission.student_id,
+                            testSubmission.test_id,
+                            testSubmission.attempt,
+                            testSubmission.submission_time,
+                            testSubmission.score,))
+                await conn.commit()
+    except Error as err:
+            raise HTTPException(status_code=status.HTTP_406_NOT_ACCEPTABLE,detail=f"Error: {err}")
+    else:
+        return testSubmission
+    
+@router.get("/retrieve_attempts", status_code=status.HTTP_200_OK)
+async def get_attempts_by_id(student_id:int, test_id:int):
+    try:
+        async for conn in get_db_session():
+            async with await conn.cursor() as cur:
+                select_query = """
+                SELECT attempt
+                FROM test_submission
+                WHERE student_id = %s
+                AND test_id = %s;"""
+                await cur.execute(
+                    select_query,
+                    (student_id,
+                     test_id,)
+                    )
+                results = await cur.fetchone()
+                if results:
+                    attempt = results[0]
+                    return attempt
+                else:
+                     return 1
+    except Error as err:
+        raise HTTPException(status_code=status.HTTP_406_NOT_ACCEPTABLE,detail=f"Error: {err}")

@@ -8,7 +8,7 @@ import datetime
 import random
 
 from db.client import get_db_session
-from db.models import Teacher
+from db.models import SectionInfoRequest, Teacher
 from pydantic import BaseModel
 from typing import Optional
 
@@ -16,12 +16,6 @@ from fastapi import APIRouter, status, HTTPException
 from mysql.connector import Error
 
 dotenv.load_dotenv()
-
-class SectionInfoRequest(BaseModel):
-    course_id:  int
-    section_id :int
-    course_name: str
-    assistant_id: Optional[int] = None
      
 
 router = APIRouter(prefix="/teacher")
@@ -118,7 +112,7 @@ async def get_teacher_by_id(teacher_id:int):
         return teacher
     
 @router.get("/get_teacher_sections", status_code=status.HTTP_200_OK, tags=["section", "teacher"])
-async def get_section_by_teacher_id(section_id:int):
+async def get_section_by_teacher_id(teacher_id:int):
     try:
         async for conn in get_db_session():
             async with await conn.cursor() as cur:
@@ -135,7 +129,7 @@ async def get_section_by_teacher_id(section_id:int):
                 ORDER BY s.id;"""
                 #Select From DB
                 await cur.execute(sel_query,
-                                (section_id,))
+                                (teacher_id,))
                 results = await cur.fetchall()
                 sections = []
                 for result in results:

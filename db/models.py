@@ -1,9 +1,7 @@
 import datetime
-from pydantic import BaseModel
-from typing import Optional
-from typing import List
-
-
+from decimal import Decimal
+from pydantic import BaseModel, Field
+from typing import Optional, List, Annotated
 
 #For Retrieving data and SQL
 class Answer(BaseModel):
@@ -68,3 +66,29 @@ class Student(BaseModel):
     id: Optional[int] = None
     name: str
     email:str
+
+
+
+class SectionInfoRequest(BaseModel):
+    course_id:  int
+    section_id :int
+    course_name: str
+    assistant_id: Optional[int] = None
+
+class TestInfoRequest(BaseModel):
+    test_id:  int
+    test_name: str
+
+
+class TestSubmission(BaseModel):
+    student_id:int
+    test_id:int
+    attempt:int
+    score: int
+    submission_time:Optional[datetime.datetime] = None
+
+class RecieveSubmission(BaseModel):
+    student_id:int
+    test_id:int
+    attempt:int
+    score: int

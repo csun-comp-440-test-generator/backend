@@ -1,4 +1,5 @@
 import sys
+
 # sys hacks to get imports to work
 sys.path.append("./")
 
@@ -8,7 +9,7 @@ import datetime
 import random
 
 from db.client import get_db_session
-from db.models import Student
+from db.models import Student, TestInfoRequest, SectionInfoRequest
 
 from fastapi import APIRouter, status, HTTPException
 from mysql.connector import Error
@@ -125,5 +126,86 @@ async def register_student_to_section(student_id:int,section_id:int):
     else:
         return True
     
+   
+@router.get("/get_student_sections", status_code=status.HTTP_200_OK, tags=["section", "student"])
+async def get_section_by_student_id(student_id:int):
+    try:
+        async for conn in get_db_session():
+            async with await conn.cursor() as cur:
+                #Create Query
+                sel_query = """
+                SELECT
+                    s.class_id as class_id,
+                    s.id as section_id,
+                    c.name as class_name
+                FROM class c
+                JOIN section s on s.class_id = c.id
+                JOIN registered r on r.section_id = s.id
+                JOIN student stu on stu.id = r.student_id
+                WHERE stu.id = %s
+                ORDER BY s.id;"""
+                #Select From DB
+                await cur.execute(sel_query,
+                                (student_id,))
+                results = await cur.fetchall()
+                sections = []
+                for result in results:
+                    section_info = result
+                    section = SectionInfoRequest(
+                        course_id=section_info[0],
+                        section_id=section_info[1],
+                        course_name=section_info[2],
+                    )
+                    sections.append(section)
+    except Error as err:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,detail=f"Error: {err}")
+    else:
+        return sections
+    
+@router.get("/get_registered_exams", status_code=status.HTTP_200_OK, tags=["exam", "student"])
+async def get_registered_exams_by_id(student_id:int):
+    try:
+        async for conn in get_db_session():
+            async with await conn.cursor() as cur:
+                #Create Query
+                sel_query = """
+                SELECT
+                    t.id as test_id,
+                    t.name as test_name
+                FROM class c
+                JOIN section s on s.class_id = c.id
+                JOIN registered r on r.section_id = s.id
+                JOIN student stu on stu.id = r.student_id
+                JOIN test t on t.section_id = s.id
+                WHERE stu.id = %s
+                ORDER BY t.id;"""
+                #Select From DB
+                await cur.execute(sel_query,
+                                (student_id,))
+                results = await cur.fetchall()
+                tests = []
+                for result in results:
+                    test_info = result
+                    test = TestInfoRequest(
+                        test_id=test_info[0],
+                        test_name=test_info[1],
+                    )
+                    tests.append(test)
+    except Error as err:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,detail=f"Error: {err}")
+    else:
+        return tests
+    
+
+
+# SELECT
+#     t.id as test_id,
+#     t.name as test_name
+# FROM class c
+# JOIN section s on s.class_id = c.id
+# JOIN registered r on r.section_id = s.id
+# JOIN student stu on stu.id = r.student_id
+# JOIN test t on t.section_id = s.id
+# WHERE stu.id = 1;
 
 
