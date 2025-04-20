@@ -198,16 +198,28 @@ async def get_registered_exams_by_id(student_id:int, section_id:int):
     else:
         return tests
     
-
-
-# SELECT
-#     t.id as test_id,
-#     t.name as test_name
-# FROM class c
-# JOIN section s on s.class_id = c.id
-# JOIN registered r on r.section_id = s.id
-# JOIN student stu on stu.id = r.student_id
-# JOIN test t on t.section_id = s.id
-# WHERE stu.id = 1;
+@router.get("/get_current_grade", status_code=status.HTTP_200_OK, tags=["exam", "student"])
+async def get_current_grade(student_id:int, section_id:int):
+    try:
+        async for conn in get_db_session():
+            async with await conn.cursor() as cur:
+                #Create Query
+                sel_query = "SELECT grade FROM registered WHERE student_id = %s AND section_id = %s;"
+                #Select From DB
+                await cur.execute(sel_query,
+                                (student_id,
+                                 section_id))
+                results = await cur.fetchone()
+                if results:
+                    grade = results[0]
+                    grade = grade*100
+                else:
+                     grade="NA"
+                
+    except Error as err:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,detail=f"Error: {err}")
+    else:
+        return grade
+    
 
 

@@ -130,4 +130,6 @@ async def get_all_courses():
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,detail=f"Error: {err}")
     else:
         return courses
+    
+
 

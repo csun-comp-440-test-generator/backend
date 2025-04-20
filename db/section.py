@@ -273,3 +273,49 @@ async def enroll_student(enroll_data: EnrollSectionRequest):
             raise HTTPException(status_code=status.HTTP_406_NOT_ACCEPTABLE,detail=f"Error: {err}")
     else:
         return enroll_data
+    
+@router.post("/update_grade", status_code=status.HTTP_200_OK, tags=["section"])
+async def update_student_grade(student_id,section_id):
+    try:
+        async for conn in get_db_session():
+            async with await conn.cursor() as cur:
+                sel_query = """
+                    SELECT
+                        sub.test_id as test_id,
+                        sub.score as grade,
+                        c.id as class_id,
+                        s.id as section_id,
+                        c.name as class_name,
+                        t.name as test_name,
+                        t.id as test_id
+                    FROM test_submission sub
+                    JOIN test t ON t.id=sub.test_id
+                    JOIN section s ON s.id = t.section_id
+                    JOIN class c ON c.id=s.class_id
+                    WHERE s.id = %s AND sub.student_id = %s;
+                    """
+                #Insert into DB
+                await cur.execute(sel_query,
+                                (section_id,
+                                student_id,
+                                ))  
+                results = await cur.fetchall()
+                total_grade = 0
+                for entry in results:
+                     total_grade += float(entry[1])
+                
+                total_grade /= len(results)
+
+                insert_query = "UPDATE registered SET grade=%s WHERE student_id = %s AND section_id = %s"
+                #Insert into DB
+                await cur.execute(insert_query,
+                                (total_grade,
+                                student_id,
+                                section_id,
+                                ))    
+                     
+                await conn.commit()
+    except Error as err:
+            raise HTTPException(status_code=status.HTTP_406_NOT_ACCEPTABLE,detail=f"Error: {err}")
+    else:
+        return total_grade

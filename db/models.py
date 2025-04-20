@@ -84,11 +84,11 @@ class TestSubmission(BaseModel):
     student_id:int
     test_id:int
     attempt:int
-    score: int
+    score: Decimal
     submission_time:Optional[datetime.datetime] = None
 
 class RecieveSubmission(BaseModel):
     student_id:int
     test_id:int
     attempt:int
-    score: int
+    score: Decimal

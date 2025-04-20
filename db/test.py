@@ -295,11 +295,12 @@ async def get_attempts_by_id(student_id:int, test_id:int):
                     (student_id,
                      test_id,)
                     )
-                results = await cur.fetchone()
+                results = await cur.fetchall()
                 if results:
-                    attempt = results[0]
-                    return attempt
+                    attempt = len(results)
                 else:
-                     return 1
+                    attempt = 1
     except Error as err:
-        raise HTTPException(status_code=status.HTTP_406_NOT_ACCEPTABLE,detail=f"Error: {err}")
+        print(f"Error: {err}")#HTTPException(status_code=status.HTTP_406_NOT_ACCEPTABLE,detail=f"Error: {err}")
+    else:
+         return attempt
