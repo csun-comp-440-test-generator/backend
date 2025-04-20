@@ -163,7 +163,7 @@ async def get_section_by_student_id(student_id:int):
         return sections
     
 @router.get("/get_registered_exams", status_code=status.HTTP_200_OK, tags=["exam", "student"])
-async def get_registered_exams_by_id(student_id:int):
+async def get_registered_exams_by_id(student_id:int, section_id:int):
     try:
         async for conn in get_db_session():
             async with await conn.cursor() as cur:
@@ -178,10 +178,12 @@ async def get_registered_exams_by_id(student_id:int):
                 JOIN student stu on stu.id = r.student_id
                 JOIN test t on t.section_id = s.id
                 WHERE stu.id = %s
+                AND s.id = %s
                 ORDER BY t.id;"""
                 #Select From DB
                 await cur.execute(sel_query,
-                                (student_id,))
+                                (student_id,
+                                 section_id))
                 results = await cur.fetchall()
                 tests = []
                 for result in results:
