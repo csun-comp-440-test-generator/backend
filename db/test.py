@@ -216,6 +216,7 @@ async def get_tests_by_test_id(test_id: int, section_id:int):
                     FROM test t 
                     JOIN question q on q.test_id = t.id
                     JOIN answer a on a.question_id = q.id
+                    AND a.test_id = t.id
                     WHERE t.id=%s"""
                 await cur.execute(
                     test_query,
