@@ -6,7 +6,7 @@ from db.course import router as courseRouter
 from db.teacher import router as teacherRouter
 from db.student import router as studentRouter
 from db.section import router as sectionRouter
-
+from db.assistant import router as assistantRouter
 
 
 import uvicorn as uv
@@ -50,6 +50,7 @@ app.include_router(courseRouter)
 app.include_router(teacherRouter)
 app.include_router(studentRouter)
 app.include_router(sectionRouter)
+app.include_router(assistantRouter)
 
 @app.get("/")
 def hello_world():

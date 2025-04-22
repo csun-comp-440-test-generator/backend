@@ -68,6 +68,12 @@ class Student(BaseModel):
     email:str
 
 
+class Assistant(BaseModel):
+    id: Optional[int] = None
+    name: str
+    email:str
+
+
 
 class SectionInfoRequest(BaseModel):
     course_id:  int
