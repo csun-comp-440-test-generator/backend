@@ -217,7 +217,7 @@ async def get_sections():
         return sections
     
 @router.get("/get_unregistered_section_info", status_code=status.HTTP_200_OK, tags=["section"])
-async def get_sections(student_id:int):
+async def get_unregistered_sections(student_id:int):
     try:
         async for conn in get_db_session():
             async with await conn.cursor() as cur:
@@ -319,3 +319,61 @@ async def update_student_grade(student_id,section_id):
             raise HTTPException(status_code=status.HTTP_406_NOT_ACCEPTABLE,detail=f"Error: {err}")
     else:
         return total_grade
+    
+class OpenSection(BaseModel):
+     course_id:int
+     section_id:int
+     course_name:str
+    
+@router.get("/get_open_sections", status_code=status.HTTP_200_OK, tags=["section", "teaching assistant"])
+async def get_open_sections(assistant_id:int):
+    try:
+        async for conn in get_db_session():
+            async with await conn.cursor() as cur:
+                #Create Query
+                sel_query = """
+                SELECT
+                    s.class_id as class_id,
+                    s.id as section_id,
+                    c.name as class_name
+                FROM section s
+                JOIN class c on c.id = s.class_id
+                LEFT JOIN teaching_assistant a on a.id = s.teaching_assistant
+                AND a.id = %s
+                WHERE a.id IS NULL"""
+                #Select From DB
+                await cur.execute(sel_query,
+                                (assistant_id,))
+                results = await cur.fetchall()
+                sections=[]
+                for section_info in results:
+                    section = OpenSection(
+                                course_id = section_info[0],
+                                section_id = section_info[1],
+                                course_name = section_info[2],)
+                    sections.append(section)
+    except Error as err:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,detail=f"Error: {err}")
+    else:
+        return sections
+    
+class RegisterAssistantSection(BaseModel):
+     section_id:int
+     assistant_id:int
+    
+@router.post("/register_assistant", status_code=status.HTTP_201_CREATED, tags=["section"])
+async def register_assistant(register_data: RegisterAssistantSection):
+    try:
+        async for conn in get_db_session():
+            async with await conn.cursor() as cur:
+                update_query = "UPDATE section SET teaching_assistant = %s WHERE id=%s"
+                #Update DB
+                await cur.execute(update_query,
+                                (register_data.assistant_id,
+                                register_data.section_id,
+                                ))                     
+                await conn.commit()
+    except Error as err:
+            raise HTTPException(status_code=status.HTTP_406_NOT_ACCEPTABLE,detail=f"Error: {err}")
+    else:
+        return register_data

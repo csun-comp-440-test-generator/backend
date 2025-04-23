@@ -1,8 +1,8 @@
 from decimal import Decimal
 import sys
-from typing import Annotated
+from typing import Annotated, List
 
-from pydantic import Field
+from pydantic import BaseModel, Field
 # sys hacks to get imports to work
 sys.path.append("./")
 
@@ -31,15 +31,32 @@ async def create_test(exam:ExamBank):
             async with await conn.cursor() as cur:
                 #Create Pydantic Model
                 #Insert Test Info
-                exam_info = Test(section_id=exam.section_id,name=exam.exam_name)
-                #Create Query
-                insert_query = "INSERT INTO test (section_id,name) VALUES (%s,%s)"
-                #Insert into DB
-                await cur.execute(insert_query,
-                                (exam_info.section_id,
-                                exam_info.name,))
-                test_id = cur.lastrowid
-                total_questions = 0
+                if exam.start_time == None and exam.end_time == None:
+                    exam_info = Test(section_id=exam.section_id,name=exam.exam_name)
+                    #Create Query
+                    insert_query = "INSERT INTO test (section_id,name) VALUES (%s,%s)"
+                    #Insert into DB
+                    await cur.execute(insert_query,
+                                    (exam_info.section_id,
+                                    exam_info.name,))
+                    test_id = cur.lastrowid
+                    total_questions = 0
+                else:
+                    exam_info = Test(
+                        section_id=exam.section_id,
+                        name=exam.exam_name, 
+                        start_time=exam.start_time,
+                        end_time=exam.end_time,)
+                    #Create Query
+                    insert_query = "INSERT INTO test (section_id,name, start_time, end_time) VALUES (%s,%s,%s,%s)"
+                    #Insert into DB
+                    await cur.execute(insert_query,
+                                    (exam_info.section_id,
+                                    exam_info.name,
+                                    exam_info.start_time,
+                                    exam_info.end_time))
+                    test_id = cur.lastrowid
+                    total_questions = 0
 
                 for question in exam.questions:
                     total_questions += 1
@@ -197,17 +214,51 @@ async def get_question_count_by_test_id(test_id:int):
         raise HTTPException(status_code=status.HTTP_406_NOT_ACCEPTABLE,detail=f"Error: {err}")
     else:
         return count
-    
 
-        
+class ExamInfoRetrieve(BaseModel):
+    exam_id: int
+    section_id:int
+    name:str
+    start_time: datetime.datetime
+    end_time: datetime.datetime
+
+@router.get("/retrieve_info", status_code=status.HTTP_200_OK)
+async def get_info_by_id(test_id:int, section_id:int):
+    try:
+        async for conn in get_db_session():
+            async with await conn.cursor() as cur:
+                select_query = """
+                SELECT *
+                FROM test
+                WHERE id = %s
+                AND section_id = %s;"""
+                await cur.execute(
+                    select_query,
+                    (test_id,
+                     section_id)
+                    )
+                results = await cur.fetchone()
+                test_info = ExamInfoRetrieve(
+                        exam_id=results[0],
+                        section_id=results[1],
+                        name=results[2],
+                        start_time=results[3],
+                        end_time=results[4],)
+    except Error as err:
+        raise HTTPException(status_code=status.HTTP_406_NOT_ACCEPTABLE,detail=f"Error: {err}")
+    else:
+        return test_info
+
+class ExamQuestionRetreival(BaseModel):
+    questions: List[Question] | None = None   
+
 @router.get("/retrieve_by_test_id", status_code=status.HTTP_200_OK)
-async def get_tests_by_test_id(test_id: int, section_id:int):
+async def get_test_questions_by_id(test_id: int):
     try:
         async for conn in get_db_session():
             async with await conn.cursor() as cur:
                 test_query = """
                     SELECT
-                        t.name as test_name,
                         q.id as question_id,
                         q.question_text as question_text,
                         a.id as answer_id,
@@ -227,10 +278,10 @@ async def get_tests_by_test_id(test_id: int, section_id:int):
                 test_model = None
                 question_data = {}
                 for row in results:
-                    test_name,question_id, question_text,answer_id,answer_text,correct = row
+                    question_id, question_text,answer_id,answer_text,correct = row
 
                     if test_model is None:
-                        test_model = Test(id=test_id,section_id=section_id,name=test_name)
+                        test_model = ExamQuestionRetreival()
                     
                     if question_id not in question_data:
                         question_data[question_id]=Question(id=question_id,test_id=test_id,question_text=question_text)
@@ -305,3 +356,24 @@ async def get_attempts_by_id(student_id:int, test_id:int):
         print(f"Error: {err}")#HTTPException(status_code=status.HTTP_406_NOT_ACCEPTABLE,detail=f"Error: {err}")
     else:
          return attempt
+
+class DeleteRequest(BaseModel):
+    exam_id:int
+    section_id:int
+
+@router.delete("/delete", status_code=status.HTTP_200_OK)
+async def delete_by_id(del_request: DeleteRequest):
+    try:
+        async for conn in get_db_session():
+            async with await conn.cursor() as cur:
+                del_query = "DELETE FROM test WHERE id=%s AND section_id = %s;"
+                await cur.execute(
+                    del_query,
+                    (del_request.exam_id,
+                     del_request.section_id)
+                    )
+                await conn.commit()
+    except Error as err:
+        HTTPException(status_code=status.HTTP_400_BAD_REQUEST,detail=f"Error: {err}")
+    else:
+        return True
