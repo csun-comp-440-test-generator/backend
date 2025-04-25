@@ -304,7 +304,8 @@ async def update_student_grade(student_id,section_id):
                 for entry in results:
                      total_grade += float(entry[1])
                 
-                total_grade /= len(results)
+                if len(results) > 0:
+                    total_grade /= len(results)
 
                 insert_query = "UPDATE registered SET grade=%s WHERE student_id = %s AND section_id = %s"
                 #Insert into DB

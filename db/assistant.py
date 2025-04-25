@@ -17,6 +17,24 @@ dotenv.load_dotenv()
 
 router = APIRouter(prefix="/assistant", tags=["teaching assistant"])
 
+@router.get("/validate", status_code=status.HTTP_200_OK,)
+async def validte_teacher(id:int):
+    try:
+        async for conn in get_db_session():
+            async with await conn.cursor() as cur:
+                #Create Query
+                sel_query = "SELECT * FROM teaching_assistant WHERE id=%s"
+                #Select From DB
+                await cur.execute(sel_query,
+                                (id,))
+                results = await cur.fetchone()
+                if results:
+                     return True
+    except Error as err:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,detail=f"Error: {err}")
+    else:
+        return False
+    
 @router.post("/get_by_id", status_code=status.HTTP_200_OK)
 async def get_by_id(assistant_id:int):
     try:

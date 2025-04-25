@@ -84,6 +84,8 @@ class SectionInfoRequest(BaseModel):
 class TestInfoRequest(BaseModel):
     test_id:  int
     test_name: str
+    start_time:datetime.datetime
+    end_time:datetime.datetime
 
 
 class TestSubmission(BaseModel):

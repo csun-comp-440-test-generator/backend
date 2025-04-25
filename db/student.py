@@ -18,6 +18,24 @@ dotenv.load_dotenv()
 
 router = APIRouter(prefix="/student")
 
+@router.get("/validate", status_code=status.HTTP_200_OK,)
+async def validte_teacher(id:int):
+    try:
+        async for conn in get_db_session():
+            async with await conn.cursor() as cur:
+                #Create Query
+                sel_query = "SELECT * FROM student WHERE id=%s"
+                #Select From DB
+                await cur.execute(sel_query,
+                                (id,))
+                results = await cur.fetchone()
+                if results:
+                     return True
+    except Error as err:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,detail=f"Error: {err}")
+    else:
+        return False
+
 @router.post("/create", status_code=status.HTTP_201_CREATED, tags=["student"])
 async def create_student(student_name:str, student_email:str):
     try:
@@ -171,7 +189,9 @@ async def get_registered_exams_by_id(student_id:int, section_id:int):
                 sel_query = """
                 SELECT
                     t.id as test_id,
-                    t.name as test_name
+                    t.name as test_name,
+                    t.start_time as start_time,
+                    t.end_time as end_time
                 FROM class c
                 JOIN section s on s.class_id = c.id
                 JOIN registered r on r.section_id = s.id
@@ -191,6 +211,8 @@ async def get_registered_exams_by_id(student_id:int, section_id:int):
                     test = TestInfoRequest(
                         test_id=test_info[0],
                         test_name=test_info[1],
+                        start_time=test_info[2],
+                        end_time=test_info[3]
                     )
                     tests.append(test)
     except Error as err:
