@@ -31,32 +31,34 @@ async def create_test(exam:ExamBank):
             async with await conn.cursor() as cur:
                 #Create Pydantic Model
                 #Insert Test Info
-                if exam.start_time == None and exam.end_time == None:
-                    exam_info = Test(section_id=exam.section_id,name=exam.exam_name)
-                    #Create Query
-                    insert_query = "INSERT INTO test (section_id,name) VALUES (%s,%s)"
-                    #Insert into DB
-                    await cur.execute(insert_query,
-                                    (exam_info.section_id,
-                                    exam_info.name,))
-                    test_id = cur.lastrowid
-                    total_questions = 0
-                else:
-                    exam_info = Test(
-                        section_id=exam.section_id,
-                        name=exam.exam_name, 
-                        start_time=exam.start_time,
-                        end_time=exam.end_time,)
-                    #Create Query
-                    insert_query = "INSERT INTO test (section_id,name, start_time, end_time) VALUES (%s,%s,%s,%s)"
-                    #Insert into DB
-                    await cur.execute(insert_query,
-                                    (exam_info.section_id,
-                                    exam_info.name,
-                                    exam_info.start_time,
-                                    exam_info.end_time))
-                    test_id = cur.lastrowid
-                    total_questions = 0
+                # if exam.start_time == None and exam.end_time == None:
+                #     exam_info = Test(section_id=exam.section_id,name=exam.exam_name)
+                #     #Create Query
+                #     insert_query = "INSERT INTO test (section_id,name) VALUES (%s,%s)"
+                #     #Insert into DB
+                #     await cur.execute(insert_query,
+                #                     (exam_info.section_id,
+                #                     exam_info.name,))
+                #     test_id = cur.lastrowid
+                #     total_questions = 0
+                # else:
+                exam_info = Test(
+                    section_id=exam.section_id,
+                    name=exam.exam_name, 
+                    max_questions=exam.max_questions,
+                    start_time=exam.start_time,
+                    end_time=exam.end_time,)
+                #Create Query
+                insert_query = "INSERT INTO test (section_id,name, start_time, end_time,max_questions) VALUES (%s,%s,%s,%s,%s)"
+                #Insert into DB
+                await cur.execute(insert_query,
+                                (exam_info.section_id,
+                                exam_info.name,
+                                exam_info.start_time,
+                                exam_info.end_time,
+                                exam_info.max_questions))
+                test_id = cur.lastrowid
+                total_questions = 0
 
                 for question in exam.questions:
                     total_questions += 1
@@ -104,10 +106,10 @@ async def create_blank_test(section_id:int, test_name:str):
         return test
     
 @router.get("/generate_test_questions_from_bank", status_code=status.HTTP_200_OK)
-async def generate_test_questions_from_bank(section_id:int, test_id:int, number_of_questions:int):
+async def generate_test_questions_from_bank(test_id:int):
     try:
         async for conn in get_db_session():
-            async with await conn.cursor() as cur:           
+            async with await conn.cursor() as cur:
                 test_query = """
                     WITH question_count AS (
                         SELECT COUNT(DISTINCT q.id) AS total_questions
@@ -117,6 +119,10 @@ async def generate_test_questions_from_bank(section_id:int, test_id:int, number_
                     )
                     SELECT 
                         t.name as test_name,
+                        t.section_id as section_id,
+                        t.max_questions as max_questions,
+                        t.start_time as start_time,
+                        t.end_time as end_time,
                         q.id AS question_id,
                         q.question_text AS question_text,
                         a.id AS answer_id,
@@ -126,25 +132,23 @@ async def generate_test_questions_from_bank(section_id:int, test_id:int, number_
                     FROM test_generation_model.test t
                     JOIN test_generation_model.question q ON q.test_id = t.id
                     JOIN test_generation_model.answer a ON a.question_id = q.id
+                    AND a.test_id = t.id
                     JOIN question_count qc ON 1=1
-                    WHERE t.id = %s;
+                    WHERE t.id = %s
                     """
                 await cur.execute(
                     test_query,
                     (test_id,test_id,)
                     )
                 results = await cur.fetchall()
-                if number_of_questions > results[0][6]:
-                    raise HTTPException(status_code=status.HTTP_406_NOT_ACCEPTABLE, detail="There are not enough questions in the bank")
-                    return
 
                 test_model = None
                 question_data = {}
                 for row in results:
-                    test_name,question_id, question_text,answer_id,answer_text,correct, total_questions = row
+                    test_name,section_id,max_questions,start_time,end_time,question_id, question_text,answer_id,answer_text,correct, total_questions = row
 
                     if test_model is None:
-                        test_model = Test(id=test_id,section_id=section_id,name=test_name)
+                        test_model = Test(id=test_id,section_id=section_id,name=test_name,max_questions=max_questions, start_time=start_time, end_time=end_time)
                     
                     if question_id not in question_data:
                         question_data[question_id]=Question(id=question_id,test_id=test_id,question_text=question_text)
@@ -156,7 +160,8 @@ async def generate_test_questions_from_bank(section_id:int, test_id:int, number_
 
                     question_data[question_id].answers.append(answer)
                 
-                question_bank = random.sample(range(1,len(question_data)),number_of_questions)
+
+                question_bank = random.sample(range(1,len(question_data)+1),max_questions)
 
                 filtered_questions = [question_data[i] for i in question_bank if i in question_data]
 
@@ -187,7 +192,8 @@ async def get_tests_by_section_id(section_id: int):
                         section_id = test_info[1],
                         name=test_info[2],
                         start_time=test_info[3],
-                        end_time=test_info[4]
+                        end_time=test_info[4],
+                        max_questions=test_info[5]
                     )
                     tests.append(test)
     except Error as err:
@@ -221,6 +227,7 @@ class ExamInfoRetrieve(BaseModel):
     name:str
     start_time: datetime.datetime
     end_time: datetime.datetime
+    max_questions:int
 
 @router.get("/retrieve_info", status_code=status.HTTP_200_OK)
 async def get_info_by_id(test_id:int, section_id:int):
@@ -243,7 +250,8 @@ async def get_info_by_id(test_id:int, section_id:int):
                         section_id=results[1],
                         name=results[2],
                         start_time=results[3],
-                        end_time=results[4],)
+                        end_time=results[4],
+                        max_questions = results[5])
     except Error as err:
         raise HTTPException(status_code=status.HTTP_406_NOT_ACCEPTABLE,detail=f"Error: {err}")
     else:

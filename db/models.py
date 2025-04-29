@@ -22,6 +22,7 @@ class Test(BaseModel):
     id: Optional[int] = None
     section_id: int
     name:str
+    max_questions:int
     start_time: Optional[datetime.datetime] = None
     end_time: Optional[datetime.datetime] = None
     questions:Optional[List[Question]] = None
@@ -39,6 +40,7 @@ class QuestionBank(BaseModel):
 class ExamBank(BaseModel):
     section_id:int
     exam_name:str
+    max_questions:int
     questions:List[QuestionBank]
     start_time: Optional[datetime.datetime] = None
     end_time: Optional[datetime.datetime] = None

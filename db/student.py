@@ -232,7 +232,7 @@ async def get_current_grade(student_id:int, section_id:int):
                                 (student_id,
                                  section_id))
                 results = await cur.fetchone()
-                if results:
+                if results[0] != None:
                     grade = results[0]
                     grade = grade*100
                 else:
